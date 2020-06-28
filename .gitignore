@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+steps/
+
+._*
+.gwf*
+.vscode/
+
+# but not README.md
+!**/README.md
