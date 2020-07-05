@@ -1,5 +1,6 @@
 
-from gwf import Workflow 
+from gwf import Workflow, AnonymousTarget
+
 from pathlib import Path
 import os, string, re
 
@@ -140,6 +141,22 @@ def reciprocal_liftover(intervals_files, forwards_chain_file, backwards_chain_fi
     return lifted_files
 
 
+def merge_chrom_files(input_files, output_file):
+
+    inputs = input_files
+    outputs = [output_file]
+    options = {
+        'memory': '4g',
+        'walltime': '00:10:00'
+    }
+
+    spec = f'''
+    mkdir -p {os.path.dirname(output_file)}
+    cat {" ".join(input_files)} > {output_file}
+    '''
+
+    return AnonymousTarget(inputs=inputs, outputs=outputs, options=options, spec=spec)
+
 #################################################################################
 # Workflow
 #################################################################################
@@ -149,12 +166,14 @@ human_chromosomes = ['chr{}'.format(x) for x in list(range(1,23)) + ['X']]
 
 split_bed_files = split_file(Path('decode_hg38_sexavg_per_gen.tsv'), Path('steps/split_files'), n_files=50)
 
-sites_files_lifted_to_species = reciprocal_liftover(split_bed_files, 
+chrom_files_lifted_to_species = reciprocal_liftover(split_bed_files, 
     forwards_chain_file=Path('chain_files/hg38ToHg19.over.chain'), 
     backwards_chain_file=Path('chain_files/hg19ToHg38.over.chain'),
     slurm_tag='siteslift',
     steps_dir=Path(os.getcwd(), 'steps', 'liftover'),
     target_chromosomes=human_chromosomes)
 
-
+gwf.target_from_template('merge_chrom_files',
+    merge_chrom_files(input_files=list(map(str, chrom_files_lifted_to_species)), 
+    output_file='steps/lifted/decode_hg38_lifted_to_hg19.bed'))
 
